@@ -1,6 +1,7 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
 #include "Copter.h"
+#include <systemlib/git_version.h>
 
 #if LOGGING_ENABLED == ENABLED
 
@@ -255,14 +256,19 @@ struct PACKED log_Nav_Tuning {
     uint64_t time_us;
     float    desired_pos_x;
     float    desired_pos_y;
+    float    desired_pos_z;
     float    pos_x;
     float    pos_y;
+    float    pos_z;
     float    desired_vel_x;
     float    desired_vel_y;
+    float    desired_vel_z;
     float    vel_x;
     float    vel_y;
+    float    vel_z;
     float    desired_accel_x;
     float    desired_accel_y;
+    // Note: Z won't fit -- exceeds the max no of fields
 };
 
 // Write an Nav Tuning packet
@@ -279,12 +285,16 @@ void Copter::Log_Write_Nav_Tuning()
         time_us         : hal.scheduler->micros64(),
         desired_pos_x   : pos_target.x,
         desired_pos_y   : pos_target.y,
+        desired_pos_z   : pos_target.z,
         pos_x           : position.x,
         pos_y           : position.y,
+        pos_z           : position.z,
         desired_vel_x   : vel_target.x,
         desired_vel_y   : vel_target.y,
+        desired_vel_z   : vel_target.z,
         vel_x           : velocity.x,
         vel_y           : velocity.y,
+        vel_z           : velocity.z,
         desired_accel_x : accel_target.x,
         desired_accel_y : accel_target.y
     };
@@ -696,7 +706,7 @@ void Copter::Log_Write_Control(const tpfc_autopilot_s& apData)
         ahrs_state      : apData.ahrs_state,
         gyro_state      : apData.gyro_state,
         accel_state     : apData.accel_state,
-        fence_breach    : apData.fence_breach,
+        fence_breach    : apData.fence_breach
     };
 
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
@@ -747,7 +757,7 @@ void Copter::Log_Write_FCU(const uint16_t* data, uint16_t data_size)
         p11             : data[10],
         p12             : data[11],
         p13             : data[12],
-        p14             : data[13],
+        p14             : data[13]
     };                         
 
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
@@ -792,7 +802,7 @@ void Copter::Log_Write_Loiter_Tune()
         vel_target_z    : pos_control._vel_target.z,
         vel_error_x    : pos_control._vel_error.x,
         vel_error_y    : pos_control._vel_error.y,
-        vel_error_z    : pos_control._vel_error.z,
+        vel_error_z    : pos_control._vel_error.z
     };
 
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
@@ -832,7 +842,7 @@ const struct LogStructure Copter::log_structure[] PROGMEM = {
     { LOG_OPTFLOW_MSG, sizeof(log_Optflow),       
       "OF",   "QBffff",   "TimeUS,Qual,flowX,flowY,bodyX,bodyY" },
     { LOG_NAV_TUNING_MSG, sizeof(log_Nav_Tuning),       
-      "NTUN", "Qffffffffff", "TimeUS,DPosX,DPosY,PosX,PosY,DVelX,DVelY,VelX,VelY,DAccX,DAccY" },
+      "NTUN", "Qffffffffffffff", "TimeUS,DPX,DPY,DPZ,PX,PY,PZ,DVX,DVY,DVZ,VX,VY,VZ,DAX,DAY" },
     { LOG_CONTROL_TUNING_MSG, sizeof(log_Control_Tuning),
       "CTUN", "Qhhfffecchh", "TimeUS,ThrIn,AngBst,ThrOut,DAlt,Alt,BarAlt,DSAlt,SAlt,DCRt,CRt" },
     { LOG_PERFORMANCE_MSG, sizeof(log_Performance), 
@@ -892,6 +902,7 @@ void Copter::start_logging()
             ap.logging_started = true;
             in_mavlink_delay = true;
             DataFlash.StartNewLog();
+            DataFlash.Log_Write_Message_P(PSTR(flt_sw_version));
             DataFlash.Log_Write_SysInfo(PSTR(FIRMWARE_STRING));
             in_mavlink_delay = false;
 
